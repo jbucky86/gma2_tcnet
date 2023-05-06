@@ -460,12 +460,39 @@ local function sendOptInCoroutine(udp, header)
     end
 end
 
+local function validateHeader(header)
+    if header == nil then
+        return false, "Header data is missing"
+    end
+
+    if header.nodeType ~= 2 then
+        return false, "Invalid nodeType value"
+    end
+
+    if type(header.nodeName) ~= "string" or header.nodeName == "" then
+        return false, "Invalid nodeName value"
+    end
+
+    if type(header.seq) ~= "number" or header.seq < 0 then
+        return false, "Invalid seq value"
+    end
+
+    return true, nil
+end
+
 local function receiveMessages(udp)
     while true do
         local data = udp:receive()
         if data then
             -- Parse the header from the incoming data
             local header = handleHeader(data)
+      
+            local isValid, errorMsg = validateHeader(header)
+            if not isValid then
+                -- Log the error message and continue to the next iteration
+                gma.echo("Invalid header data: " .. errorMsg)
+                goto continue
+            end
             -- Check if the nodeType is Master (2)
             if header.nodeType == 2 then
                 -- If the first Master node's name has not been set, store this node's name and sequence number
@@ -533,8 +560,9 @@ gma.cmd("llll")
                 --gma.echo("Ignoring Opt-IN message from non-Master") 
             end
         end
+    coroutine.yield()
+    ::continue::
     end
-  coroutine.yield()
 end
 
 
